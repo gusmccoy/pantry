@@ -3,6 +3,12 @@ import SwiftData
 
 @main
 struct pantryApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #elseif os(macOS)
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
+
     let container: ModelContainer
 
     init() {

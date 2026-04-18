@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -12,6 +13,7 @@
           "value" : "dark"
         }
       ],
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -23,56 +25,67 @@
           "value" : "tinted"
         }
       ],
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 3.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 4.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 5.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 6.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 7.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 8.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 9.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 10.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "256x256"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 11.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"
     },
     {
+      "filename" : "A9B74296-5D9F-4671-881A-878AA408D5DC 12.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"

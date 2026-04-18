@@ -1,47 +1,138 @@
 import Foundation
-import SwiftData
 import CloudKit
+import Combine
 
-#if canImport(UIKit)
-import UIKit
-#endif
+let pantryCloudKitContainerID = "iCloud.mccoy.pantry"
 
-#if canImport(AppKit)
-import AppKit
-#endif
+@MainActor
+final class HouseholdShareManager: ObservableObject {
+    static let shared = HouseholdShareManager()
 
-/// Scaffold for CKShare-based household sharing.
-///
-/// Status: PLACEHOLDER. Sync across a single user's own devices works
-/// automatically via the private CloudKit database (set up in
-/// ModelContainer.makePantryContainer). What's missing is the CKShare
-/// flow that lets *another iCloud user* join the household.
-///
-/// Wire this up once there are two iCloud accounts available to test with:
-///  1. Pick a root model to share (e.g. a dedicated HouseholdRoot record,
-///     or the Meal/PantryItem graph directly).
-///  2. Call ModelContainer.share(...) or drop down to CKContainer and
-///     create a CKShare rooted at that record's CKRecord.
-///  3. Present UICloudSharingController (iOS) / NSSharingServicePicker
-///     (macOS) with the resulting share URL.
-///  4. Handle inbound accepts in SceneDelegate / AppDelegate via
-///     userDidAcceptCloudKitShareWith.
-enum HouseholdSharing {
-    enum State: Equatable {
+    @Published var state: ShareState = .loading
+    @Published var participants: [CKShare.Participant] = []
+
+    private let ckContainer = CKContainer(identifier: pantryCloudKitContainerID)
+    private(set) var cachedShare: CKShare?
+
+    enum ShareState: Equatable {
+        case loading
         case notShared
-        case unavailable(reason: String)
+        case owner(CKShare)
+        case iCloudUnavailable
+
+        static func == (lhs: ShareState, rhs: ShareState) -> Bool {
+            switch (lhs, rhs) {
+            case (.loading, .loading), (.notShared, .notShared), (.iCloudUnavailable, .iCloudUnavailable):
+                return true
+            case (.owner(let a), .owner(let b)):
+                return a.recordID == b.recordID
+            default:
+                return false
+            }
+        }
     }
 
-    static func currentState() -> State {
-        // TODO: Inspect the CKContainer for an existing share rooted at the
-        // household's root record. For now, always report "notShared" so the
-        // UI can prompt the user to invite someone.
-        .notShared
+    func refresh() async {
+        state = .loading
+        do {
+            guard try await ckContainer.accountStatus() == .available else {
+                state = .iCloudUnavailable
+                return
+            }
+            let db = ckContainer.privateCloudDatabase
+            guard let zoneID = try await findSwiftDataZone(in: db) else {
+                state = .notShared
+                return
+            }
+            if let share = try await fetchExistingShare(zoneID: zoneID, from: db) {
+                cachedShare = share
+                participants = share.participants.filter { $0.role != .owner }
+                state = .owner(share)
+            } else {
+                state = .notShared
+            }
+        } catch {
+            state = .notShared
+        }
     }
 
-    /// Returns an error the UI can display. Real implementation will create
-    /// a CKShare and present the platform sharing UI.
-    static func startInviteFlow() -> String {
-        "Household sharing is not yet wired up. The app already syncs across your own iCloud devices. Invite a household member will be available in a future build."
+    /// Creates the CKShare (or returns the existing one) and returns it
+    /// alongside the CKContainer so callers can hand both to UICloudSharingController.
+    func prepareShare() async throws -> (CKShare, CKContainer) {
+        let db = ckContainer.privateCloudDatabase
+
+        guard let zoneID = try await findSwiftDataZone(in: db) else {
+            throw ShareError.noDataYet
+        }
+        if let existing = try await fetchExistingShare(zoneID: zoneID, from: db) {
+            cachedShare = existing
+            participants = existing.participants.filter { $0.role != .owner }
+            state = .owner(existing)
+            return (existing, ckContainer)
+        }
+
+        // Zone-level share — shares every record SwiftData stores in this zone.
+        let share = CKShare(recordZoneID: zoneID)
+        share[CKShare.SystemFieldKey.title] = "Household Pantry" as CKRecordValue
+        try await db.save(share)
+        cachedShare = share
+        participants = []
+        state = .owner(share)
+        return (share, ckContainer)
+    }
+
+    /// Called by UICloudSharingController's preparation handler so the
+    /// controller can create the share lazily on first invite.
+    func prepareSharingController(
+        preparationHandler: @escaping (CKShare?, CKContainer, Error?) -> Void
+    ) {
+        Task {
+            do {
+                let (share, container) = try await prepareShare()
+                preparationHandler(share, container, nil)
+            } catch {
+                preparationHandler(nil, ckContainer, error)
+            }
+        }
+    }
+
+    func removeParticipant(_ participant: CKShare.Participant) async throws {
+        guard let share = cachedShare else { return }
+        share.removeParticipant(participant)
+        try await ckContainer.privateCloudDatabase.save(share)
+        participants = share.participants.filter { $0.role != .owner }
+    }
+
+    // MARK: - Helpers
+
+    /// SwiftData names its zones "com.apple.coredata.cloudkit.zone" (unnamed
+    /// config) or "com.apple.coredata.cloudkit.<Name>.zone" (named config).
+    private func findSwiftDataZone(in db: CKDatabase) async throws -> CKRecordZone.ID? {
+        let zones = try await db.allRecordZones()
+        return zones.first {
+            $0.zoneID.zoneName.hasPrefix("com.apple.coredata.cloudkit")
+        }?.zoneID
+    }
+
+    /// Zone-level shares use the well-known record name "cloudkit.share".
+    private func fetchExistingShare(
+        zoneID: CKRecordZone.ID,
+        from db: CKDatabase
+    ) async throws -> CKShare? {
+        let shareID = CKRecord.ID(recordName: "cloudkit.share", zoneID: zoneID)
+        do {
+            let record = try await db.record(for: shareID)
+            return record as? CKShare
+        } catch let error as CKError where error.code == .unknownItem {
+            return nil
+        }
+    }
+}
+
+enum ShareError: LocalizedError {
+    case noDataYet
+
+    var errorDescription: String? {
+        "Add at least one meal or pantry item before inviting household members."
     }
 }
