@@ -10,19 +10,34 @@ struct pantryApp: App {
     #endif
 
     let container: ModelContainer
+    let syncMode: SyncMode
 
     init() {
         do {
-            container = try ModelContainer.makePantryContainer()
+            (container, syncMode) = try ModelContainer.makePantryContainer()
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            fatalError("Could not create local ModelContainer: \(error)")
         }
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(\.syncMode, syncMode)
         }
         .modelContainer(container)
+    }
+}
+
+// MARK: - SyncMode environment key
+
+private struct SyncModeKey: EnvironmentKey {
+    static let defaultValue: SyncMode = .cloudKit
+}
+
+extension EnvironmentValues {
+    var syncMode: SyncMode {
+        get { self[SyncModeKey.self] }
+        set { self[SyncModeKey.self] = newValue }
     }
 }

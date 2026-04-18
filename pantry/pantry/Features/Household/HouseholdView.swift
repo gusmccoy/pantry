@@ -3,6 +3,7 @@ import CloudKit
 
 struct HouseholdView: View {
     @StateObject private var manager = HouseholdShareManager.shared
+    @Environment(\.syncMode) private var syncMode
     @State private var showingShareSheet = false
     @State private var inviteError: String?
 
@@ -25,12 +26,22 @@ struct HouseholdView: View {
 
     // MARK: - Sections
 
+    @ViewBuilder
     private var syncSection: some View {
         Section("Sync") {
-            Label("Syncing across your iCloud devices", systemImage: "icloud")
-            Text("Meals, pantry, and grocery lists sync to every device signed in with this iCloud account.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            switch syncMode {
+            case .cloudKit:
+                Label("Syncing across your iCloud devices", systemImage: "icloud")
+                Text("Meals, pantry, and grocery lists sync to every device signed in with this iCloud account.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .localOnly(let reason):
+                Label("iCloud sync unavailable", systemImage: "xmark.icloud")
+                    .foregroundStyle(.orange)
+                Text("Data is saved locally only. Reason: \(reason)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
